@@ -53,11 +53,17 @@ public:
     }
   }
 
-   TStack<T> reverse(){
+  TStack<T> reverse() {
     TStack<T> rev;
-    for(int i=0;i<*this->get_size();i++){
-      rev.push(*this->pop());
+    int count = top + 1;
+    T *tmp = new T[count];
+    for (int i = 0; i < count; i++) {
+      tmp[count - 1 - i] = mem[i];
     }
+    for (int i = 0; i < count; i++) {
+      rev.push(tmp[i]);
+    }
+    delete[] tmp;
     return rev;
   }
 
@@ -65,7 +71,5 @@ public:
 
   int get_count() { return top + 1; }
 };
-
-
 
 #endif

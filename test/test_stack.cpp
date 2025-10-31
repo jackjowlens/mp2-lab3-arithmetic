@@ -5,23 +5,23 @@
 
 
 TEST(TStackTest, ConstructorAndBasicOperations) {
-    TStack<int> stack(5);
-    EXPECT_TRUE(stack.isEmpty());
-    EXPECT_EQ(stack.get_size(), 5);
+    TStack<int> s1tack(5);
+    EXPECT_TRUE(s1tack.isEmpty());
+    EXPECT_EQ(s1tack.get_size(), 5);
 }
 
 // Тест добавления и извлечения элементов
 TEST(TStackTest, PushAndPop) {
-    TStack<int> stack(3);
-    stack.push(10);
-    stack.push(20);
-    stack.push(30);
+    TStack<int> s1tack(3);
+    s1tack.push(10);
+    s1tack.push(20);
+    s1tack.push(30);
     
-    EXPECT_FALSE(stack.isEmpty());
-    EXPECT_EQ(stack.pop(), 30);
-    EXPECT_EQ(stack.pop(), 20);
-    EXPECT_EQ(stack.pop(), 10);
-    EXPECT_TRUE(stack.isEmpty());
+    EXPECT_FALSE(s1tack.isEmpty());
+    EXPECT_EQ(s1tack.pop(), 30);
+    EXPECT_EQ(s1tack.pop(), 20);
+    EXPECT_EQ(s1tack.pop(), 10);
+    EXPECT_TRUE(s1tack.isEmpty());
 }
 
 // Тест метода Top
@@ -132,6 +132,7 @@ TEST(TStackTest, BoundaryConditions) {
 TEST(TStackTest, CustomType) {
     struct Point {
         int x, y;
+        Point() : x(0), y(0) {}  // Добавлен default конструктор
         Point(int x, int y) : x(x), y(y) {}
         bool operator==(const Point& other) const {
             return x == other.x && y == other.y;

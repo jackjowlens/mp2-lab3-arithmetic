@@ -1,6 +1,8 @@
 #include "stack.h"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <cstring>
 #include <iostream>
 #include <stack>
 #include <stdexcept>
@@ -13,7 +15,7 @@ using namespace std;
 
 const string inspect = "/*-+^()";
 
-const string fInspect="cossinlogsqrt";
+const string fInspect = "cossinlogsqrt";
 
 template <typename T> class Lexema {
 public:
@@ -21,17 +23,17 @@ public:
   int priority;
   int type; // 1-скобки, 2-число, 3-функция, 4-оператор
 
+  virtual ~Lexema() {}
   Lexema() : name(""), priority(-1), type(0) {}
-  Lexema(string s) : name(s), type(1), priority(0) {} //bracket
-  string GetName(){
-    return name;
-  }
+  Lexema(string s) : name(s), type(1), priority(0) {} // bracket
+  string GetName() { return name; }
 };
 
 class Function : public Lexema<string> {
   double (*function)(double);
 
 public:
+  virtual ~Function() {}
   Function(string s) : Lexema(s) {
     type = 3;
     name = s;
@@ -52,8 +54,14 @@ class Operation : public Lexema<string> {
   double (*operations)(double, double);
 
 public:
-  Operation() : Lexema<string>("", 4, 0), operations(nullptr) {}
-  Operation(string s) : Lexema(s, 4, 0) {
+  virtual ~Operation() {}
+  Operation() : Lexema<string>(""), operations(nullptr) {
+    type = 4;
+    priority = 0;
+  }
+  Operation(string s) : Lexema<string>(s), operations(nullptr) {
+    type = 4;
+    priority = 0;
     if (s == "+") {
       operations = [](double a, double b) { return a + b; };
       priority = 1;
@@ -75,9 +83,9 @@ public:
   double execute(double a, double b) { return operations(a, b); }
 };
 
-bool isOperator(char c) { return inspect.find(c) != -1; }
+inline bool isOperator(char c) { return inspect.find(c) != -1; }
 
-bool isFunction(const string &str, size_t pos) {
+inline bool isFunction(const string &str, size_t pos) {
   string functions[] = {"sin", "cos", "log"};
   for (const auto &func : functions) {
     if (str.substr(pos, func.length()) == func) {
@@ -87,9 +95,7 @@ bool isFunction(const string &str, size_t pos) {
   return false;
 }
 
-#include "input.h"
-
-int asciiToNumber(char ch) {
+inline int asciiToNumber(char ch) {
   if (ch >= '0' &&
       ch <= '9') { // символы по кодам аски "0" это 48 а "9" соотвественно 57
     return ch - '0'; // 48 - 48 =0 (получаем 0)  49-48=1 (единичка)
@@ -97,9 +103,9 @@ int asciiToNumber(char ch) {
   return -1;
 }
 
-int isValidChar(char ch) {
+inline int isValidChar(char ch) {
   const char availableChars[] =
-      "+-*/sincoslogsqrt().0123456789x"; // набор всех доступных символов
+      "+-*/^sincoslogsqrt().0123456789x"; // набор всех доступных символов
   int is_valid = 0;
   for (int i = 0; availableChars[i] != '\0'; i++) {
     if (ch == availableChars[i]) {
@@ -109,8 +115,8 @@ int isValidChar(char ch) {
   return is_valid;
 }
 
-int isFuncStart(const char *str, int index, const char **functions,
-                int num_functions, int *func_len) {
+inline int isFuncStart(const char *str, int index, const char **functions,
+                       int num_functions, int *func_len) {
   for (int i = 0; i < num_functions; i++) {
     int len = strlen(functions[i]);
     if (strncmp(&str[index], functions[i], len) == 0) {
@@ -122,7 +128,7 @@ int isFuncStart(const char *str, int index, const char **functions,
   return 0;
 }
 
-int input(const char *str, size_t len) {
+inline int input(const char *str, size_t len) {
   const char *functions[] = {"sqrt", "log", "sin", "cos"};
   int is_error = 0, previous = 0, was_num = 0, decimal_used = 0;
   int parentheses_count = 0, last_was_operator = 0, last_was_func = 0;
@@ -147,7 +153,7 @@ int input(const char *str, size_t len) {
       is_error = 1;
     decimal_used |= (cur == '.'); // ловит неверный ввод нецелого числа
 
-    if (isFuncStart(str, i, functions, 6, &func_len)) {
+    if (isFuncStart(str, i, functions, 4, &func_len)) {
       if (last_was_func || (was_num && previous != '('))
         is_error = 1; // скобки и их баланс
 
@@ -191,110 +197,142 @@ int input(const char *str, size_t len) {
   return is_error;
 }
 
-double execute(string& s, double glx) {
-    int i = 0;
-    TStack<double> numbers;
-    TStack<Lexema<string>*> res;  // Исправлен тип шаблона
-    
-    while (i < s.size()) {
-        // Обработка скобок
-        if (s[i] == ')' || s[i] == '(') {
-            res.push(new Lexema<string>(string(1, s[i])));
-            i++;
-            continue;
-        }
-        
-        // Обработка чисел
-        if (i < s.size() && isdigit(s[i])) {
-            string tmp = "";
-            tmp += s[i];
-            i++;
-            while (i < s.size() && (isdigit(s[i]) || s[i] == '.')) {
-                tmp += s[i];
-                i++;
-            }
-            numbers.push(stod(tmp));
-            continue;
-        }
-        
-        // Обработка переменной x
-        if (s[i] == 'x') {
-            numbers.push(glx);
-            i++;
-            continue;
-        }
-        
-        // Обработка операторов
-        if (s[i] == '+' || s[i] == '-' || s[i] == '*' || s[i] == '/' || s[i] == '^') {
-            res.push(new Operation(string(1, s[i])));
-            i++;
-            continue;
-        }
-        
-        // Обработка функций
-        if (s[i] == 's' || s[i] == 'l' || s[i] == 'c') {
-            string tmp = "";
-            // Проверяем возможные функции
-            if (s.substr(i, 3) == "sin") {
-                tmp = "sin";
-                i += 3;
-            } else if (s.substr(i, 3) == "cos") {
-                tmp = "cos";
-                i += 3;
-            } else if (s.substr(i, 3) == "log") {
-                tmp = "log";
-                i += 3;
-            } else if (s.substr(i, 4) == "sqrt") {
-                tmp = "sqrt";
-                i += 4;
-            } else {
-                i++; // Пропускаем неизвестный символ
-            }
-            if (!tmp.empty()) {
-                res.push(new Function(tmp));
-            }
-            continue;
-        }
-        
-        i++; // Переход к следующему символу, если не распознан
-    }
-    
-    // Разворачиваем стеки для правильного порядка вычислений
-    numbers = numbers.reverse();
-    res = res.reverse();
-    
-    // Выполняем вычисления
-    while (!res.isEmpty()) {
-        Lexema<string>* current = res.pop();
-        
-        if (current->type == 3) { // Функция
-            Function* func = dynamic_cast<Function*>(current);
-            if (func && !numbers.isEmpty()) {
-                double tmp = numbers.pop();
-                numbers.push(func->execute(tmp));
-            }
-        } 
-        else if (current->type == 4) { // Оператор
-            Operation* op = dynamic_cast<Operation*>(current);
-            if (op && numbers.get_size() >= 2) {
-                double tmp2 = numbers.pop();
-                double tmp1 = numbers.pop();
-                numbers.push(op->execute(tmp1, tmp2));
-            }
-        }
-        // Для чисел и скобок ничего не делаем в этой простой реализации
-        
-        delete current; // Освобождаем память
-    }
-    
-    // Возвращаем результат
-    if (!numbers.isEmpty()) {
-        return numbers.pop();
-    } else {
-        throw runtime_error("No result calculated");
-    }
-}
+inline double execute(string &s, double glx) {
+  TStack<double> numbers;
+  TStack<Lexema<string> *> operators;
 
+  int i = 0;
+  while (i < s.size()) {
+    if (isspace(s[i])) {
+      i++;
+      continue;
+    }
+
+    // Числа и переменная x сразу в выход
+    if (isdigit(s[i])) {
+      string num = "";
+      while (i < s.size() && (isdigit(s[i]) || s[i] == '.')) {
+        num += s[i];
+        i++;
+      }
+      numbers.push(stod(num));
+      continue;
+    }
+
+    if (s[i] == 'x') {
+      numbers.push(glx);
+      i++;
+      continue;
+    }
+
+    // Функции - в стек операторов
+    if (s[i] == 's' || s[i] == 'c' || s[i] == 'l') {
+      string funcName = "";
+      if (s.substr(i, 3) == "sin") {
+        funcName = "sin";
+        i += 3;
+      } else if (s.substr(i, 3) == "cos") {
+        funcName = "cos";
+        i += 3;
+      } else if (s.substr(i, 3) == "log") {
+        funcName = "log";
+        i += 3;
+      } else if (s.substr(i, 4) == "sqrt") {
+        funcName = "sqrt";
+        i += 4;
+      }
+      if (!funcName.empty()) {
+        operators.push(new Function(funcName));
+      }
+      continue;
+    }
+
+    // Операторы
+    if (isOperator(s[i]) && s[i] != '(' && s[i] != ')') {
+      Operation *currentOp = new Operation(string(1, s[i]));
+
+      // Выталкиваем операторы с higher or equal priority
+      while (!operators.isEmpty()) {
+        Lexema<string> *top = operators.Top();
+        if (top->type == 4 && top->priority >= currentOp->priority) {
+          // Выполняем операцию
+          if (numbers.get_count() >= 2) {
+            double b = numbers.pop();
+            double a = numbers.pop();
+            Operation *op = dynamic_cast<Operation *>(operators.pop());
+            numbers.push(op->execute(a, b));
+            delete op;
+          }
+        } else {
+          break;
+        }
+      }
+      operators.push(currentOp);
+      i++;
+      continue;
+    }
+
+    // Открывающая скобка
+    if (s[i] == ')') {
+      while (!operators.isEmpty() && operators.Top()->name != "(") {
+        Lexema<string> *top = operators.pop();
+
+        if (top->type == 3) { // Функция
+          if (!numbers.isEmpty()) {
+            double arg = numbers.pop();
+            Function *func = dynamic_cast<Function *>(top);
+            numbers.push(func->execute(arg));
+          }
+        } else if (top->type == 4 && numbers.get_count() >= 2) { // Оператор
+          double b = numbers.pop();
+          double a = numbers.pop();
+          Operation *op = dynamic_cast<Operation *>(top);
+          numbers.push(op->execute(a, b));
+        }
+        delete top;
+      }
+    }
+
+    // Закрывающая скобка
+    if (s[i] == ')') {
+      while (!operators.isEmpty() && operators.Top()->name != "(") {
+        Lexema<string> *top = operators.pop();
+        if (top->type == 4 && numbers.get_count() >= 2) {
+          double b = numbers.pop();
+          double a = numbers.pop();
+          Operation *op = dynamic_cast<Operation *>(top);
+          numbers.push(op->execute(a, b));
+        }
+        delete top;
+      }
+      if (!operators.isEmpty() && operators.Top()->name == "(") {
+        delete operators.pop(); // Удаляем "("
+      }
+      i++;
+      continue;
+    }
+
+    i++;
+  }
+
+  // Выполняем оставшиеся операции
+  while (!operators.isEmpty()) {
+    Lexema<string> *top = operators.pop();
+    if (top->type == 4 && numbers.get_count() >= 2) {
+      double b = numbers.pop();
+      double a = numbers.pop();
+      Operation *op = dynamic_cast<Operation *>(top);
+      numbers.push(op->execute(a, b));
+    }
+    delete top;
+  }
+
+  if (numbers.isEmpty()) {
+    throw runtime_error("No result");
+  }
+
+  return numbers.pop();
+}
 
 // double Execute(string&s,double glx){
 //     int i=0;
@@ -330,7 +368,7 @@ double execute(string& s, double glx) {
 //             res.push(Function(tmp));
 //             i++;
 //         }
-//     }  
+//     }
 //     numbers=numbers.reverse();
 //     res=res.reverse();
 //     while(!numbers.isEmpty() || !res.isEmpty()){
@@ -345,3 +383,5 @@ double execute(string& s, double glx) {
 //         }
 //     }
 // }
+
+#endif
