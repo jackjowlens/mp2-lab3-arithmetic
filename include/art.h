@@ -197,6 +197,9 @@ inline int input(const char *str, size_t len) {
   return is_error;
 }
 
+inline double execute2(string &s, map<string, double> variables) {}
+
+
 inline double execute(string &s, double glx) {
   TStack<double> numbers;
   TStack<Lexema<string> *> operators;

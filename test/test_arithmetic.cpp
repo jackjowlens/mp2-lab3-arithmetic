@@ -165,6 +165,7 @@ TEST(ClassTest, FunctionCreation) {
 
 TEST(ClassTest, OperationCreation) {
     Operation add("+");
+//    Operation x{"+", 4, 1};
     EXPECT_EQ(add.type, 4);
     EXPECT_EQ(add.priority, 1);
     EXPECT_NEAR(add.execute(2, 3), 5.0, 0.001);
