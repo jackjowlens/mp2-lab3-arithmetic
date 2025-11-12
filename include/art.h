@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <map>
 #include <stack>
 #include <stdexcept>
 #include <string>
@@ -105,7 +106,7 @@ inline int asciiToNumber(char ch) {
 
 inline int isValidChar(char ch) {
   const char availableChars[] =
-      "+-*/^sincoslogsqrt().0123456789x"; // набор всех доступных символов
+      "+-*/^sincoslogsqrt().0123456789xyz"; // набор всех доступных символов
   int is_valid = 0;
   for (int i = 0; availableChars[i] != '\0'; i++) {
     if (ch == availableChars[i]) {
@@ -197,10 +198,9 @@ inline int input(const char *str, size_t len) {
   return is_error;
 }
 
-inline double execute2(string &s, map<string, double> variables) {}
 
 
-inline double execute(string &s, double glx) {
+inline double execute(string &s, map<string,double> variables) {
   TStack<double> numbers;
   TStack<Lexema<string> *> operators;
 
@@ -211,7 +211,6 @@ inline double execute(string &s, double glx) {
       continue;
     }
 
-    // Числа и переменная x сразу в выход
     if (isdigit(s[i])) {
       string num = "";
       while (i < s.size() && (isdigit(s[i]) || s[i] == '.')) {
@@ -222,13 +221,16 @@ inline double execute(string &s, double glx) {
       continue;
     }
 
-    if (s[i] == 'x') {
-      numbers.push(glx);
-      i++;
-      continue;
+    if (s[i] == 'x' || s[i] == 'y' || s[i] == 'z') {
+    string var_name(1, s[i]); 
+    if (variables.find(var_name) != variables.end()) {
+        numbers.push(variables[var_name]);
+    } else {
+        throw runtime_error("Undefined variable: " + var_name);
     }
-
-    // Функции - в стек операторов
+    i++;
+    continue;
+}
     if (s[i] == 's' || s[i] == 'c' || s[i] == 'l') {
       string funcName = "";
       if (s.substr(i, 3) == "sin") {
@@ -250,15 +252,13 @@ inline double execute(string &s, double glx) {
       continue;
     }
 
-    // Операторы
     if (isOperator(s[i]) && s[i] != '(' && s[i] != ')') {
       Operation *currentOp = new Operation(string(1, s[i]));
 
-      // Выталкиваем операторы с higher or equal priority
       while (!operators.isEmpty()) {
         Lexema<string> *top = operators.Top();
         if (top->type == 4 && top->priority >= currentOp->priority) {
-          // Выполняем операцию
+          
           if (numbers.get_count() >= 2) {
             double b = numbers.pop();
             double a = numbers.pop();
@@ -274,19 +274,17 @@ inline double execute(string &s, double glx) {
       i++;
       continue;
     }
-
-    // Открывающая скобка
     if (s[i] == ')') {
       while (!operators.isEmpty() && operators.Top()->name != "(") {
         Lexema<string> *top = operators.pop();
 
-        if (top->type == 3) { // Функция
+        if (top->type == 3) { 
           if (!numbers.isEmpty()) {
             double arg = numbers.pop();
             Function *func = dynamic_cast<Function *>(top);
             numbers.push(func->execute(arg));
           }
-        } else if (top->type == 4 && numbers.get_count() >= 2) { // Оператор
+        } else if (top->type == 4 && numbers.get_count() >= 2) {
           double b = numbers.pop();
           double a = numbers.pop();
           Operation *op = dynamic_cast<Operation *>(top);
@@ -296,7 +294,6 @@ inline double execute(string &s, double glx) {
       }
     }
 
-    // Закрывающая скобка
     if (s[i] == ')') {
       while (!operators.isEmpty() && operators.Top()->name != "(") {
         Lexema<string> *top = operators.pop();
@@ -309,7 +306,7 @@ inline double execute(string &s, double glx) {
         delete top;
       }
       if (!operators.isEmpty() && operators.Top()->name == "(") {
-        delete operators.pop(); // Удаляем "("
+        delete operators.pop(); 
       }
       i++;
       continue;
@@ -318,7 +315,6 @@ inline double execute(string &s, double glx) {
     i++;
   }
 
-  // Выполняем оставшиеся операции
   while (!operators.isEmpty()) {
     Lexema<string> *top = operators.pop();
     if (top->type == 4 && numbers.get_count() >= 2) {
