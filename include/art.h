@@ -1,4 +1,7 @@
 #include "stack.h"
+#include "../../lists/include/TPolinom.h"
+#include "../../lists/include/TLists.h"
+#include "../../lists/include/TMonom.h"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -82,6 +85,15 @@ public:
   }
 
   double execute(double a, double b) { return operations(a, b); }
+
+  TPolinom execute(TPolinom& a, TPolinom& b) {
+    if (name == "+") return a + b;
+    else if (name == "-") return a - b;
+    else if (name == "*") return a * b;
+    else if (name == "/") throw runtime_error("Division not supported for TPolinom");
+    else if (name == "^") throw runtime_error("Power not supported for TPolinom");
+    throw runtime_error("Unknown operation: " + name);
+  }
 };
 
 inline bool isOperator(char c) { return inspect.find(c) != -1; }
@@ -333,7 +345,118 @@ inline double execute(string &s, map<string,double> variables) {
   return numbers.pop();
 }
 
-// double Execute(string&s,double glx){
+inline TPolinom execute(string &s, map<string,TPolinom> variables) {
+  TStack<TPolinom> numbers;
+  TStack<Lexema<string> *> operators;
+
+  int i = 0;
+  while (i < s.size()) {
+    if (isspace(s[i])) {
+      i++;
+      continue;
+    }
+
+    if (isdigit(s[i])) {
+      string num = "";
+      while (i < s.size() && (isdigit(s[i]) || s[i] == '.')) {
+        num += s[i];
+        i++;
+      }
+      numbers.push(TPolinom(stod(num)));
+      continue;
+    }
+
+    if (s[i] == 'x' || s[i] == 'y' || s[i] == 'z') {
+      string var_name(1, s[i]); 
+      if (variables.find(var_name) != variables.end()) {
+        numbers.push(variables[var_name]);
+      } else {
+        throw runtime_error("Undefined variable: " + var_name);
+      }
+      i++;
+      continue;
+    }
+
+
+    if (s[i] == 's' || s[i] == 'c' || s[i] == 'l') {
+      if (s.substr(i, 3) == "sin" || s.substr(i, 3) == "cos" || 
+          s.substr(i, 3) == "log" || s.substr(i, 4) == "sqrt") {
+        throw runtime_error("Functions not supported for TPolinom");
+      }
+      i++;
+      continue;
+    }
+
+    if (s[i] == '(') {
+      operators.push(new Lexema<string>("("));
+      i++;
+      continue;
+    }
+
+    if (isOperator(s[i]) && s[i] != ')') {
+      Operation *currentOp = new Operation(string(1, s[i]));
+
+      while (!operators.isEmpty()) {
+        Lexema<string> *top = operators.Top();
+        if (top->type == 4 && top->priority >= currentOp->priority) {
+          if (numbers.get_count() >= 2) {
+            TPolinom b = numbers.pop();
+            TPolinom a = numbers.pop();
+            Operation *op = dynamic_cast<Operation *>(operators.pop());
+            TPolinom tmp=op->execute(a,b);
+            tmp.sort();
+            numbers.push(tmp);
+            delete op;
+          }
+        } else {
+          break;
+        }
+      }
+      operators.push(currentOp);
+      i++;
+      continue;
+    }
+
+    if (s[i] == ')') {
+      while (!operators.isEmpty() && operators.Top()->name != "(") {
+        Lexema<string> *top = operators.pop();
+        if (top->type == 4 && numbers.get_count() >= 2) {
+          TPolinom b = numbers.pop();
+          TPolinom a = numbers.pop();
+          Operation *op = dynamic_cast<Operation *>(top);
+          TPolinom tmp=op->execute(a,b);
+            tmp.sort();
+            numbers.push(tmp);
+        }
+        delete top;
+      }
+      if (!operators.isEmpty() && operators.Top()->name == "(") {
+        delete operators.pop();
+      }
+      i++;
+      continue;
+    }
+
+    i++;
+  }
+
+  while (!operators.isEmpty()) {
+    Lexema<string> *top = operators.pop();
+    if (top->type == 4 && numbers.get_count() >= 2) {
+      TPolinom b = numbers.pop();
+      TPolinom a = numbers.pop();
+      Operation *op = dynamic_cast<Operation *>(top);
+      numbers.push(op->execute(a, b));
+    }
+    delete top;
+  }
+
+  if (numbers.isEmpty()) {
+    throw runtime_error("No result");
+  }
+
+  return numbers.pop();
+}// double Execute(string&s,double glx){
 //     int i=0;
 //     TStack<double> numbers;
 //     TStack<Lexema<string<string>*> res;
